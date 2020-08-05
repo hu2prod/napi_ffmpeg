@@ -1,5 +1,5 @@
 {
-  "name": "napi_ffmpeg",
+  "name": "napi_video",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,15 +8,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hu2prod/napi_ffmpeg.git"
+    "url": "git+https://github.com/hu2prod/napi_video.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hu2prod/napi_ffmpeg/issues"
+    "url": "https://github.com/hu2prod/napi_video/issues"
   },
-  "homepage": "https://github.com/hu2prod/napi_ffmpeg#readme",
+  "homepage": "https://github.com/hu2prod/napi_video#readme",
   "dependencies": {
     "node-gyp": "^7.0.0"
   }
