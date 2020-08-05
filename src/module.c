@@ -16,7 +16,6 @@
 // AVCodec         *pCodec = NULL;
 // AVFrame         *pFrame = NULL; 
 // AVFrame         *pFrameRGB = NULL;
-// AVPacket        packet;
 // int             frameFinished;
 // uint8_t         *buffer = NULL;
 // 
@@ -31,13 +30,13 @@
 //    context manipulation
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 struct Decode_context {
+  i32             ctx_idx;
   AVFormatContext *pFormatCtx;
   int             videoStream;
   AVCodecContext  *pCodecCtx;
   AVCodec         *pCodec;
   AVFrame         *pFrame; 
   AVFrame         *pFrameRGB;
-  AVPacket        packet;
   int             frameFinished;
   uint8_t         *buffer;
   
@@ -82,15 +81,19 @@ napi_value decode_ctx_init(napi_env env, napi_callback_info info) {
   }
   
   struct Decode_context* ctx;
-  int ctx_idx = free_context_counter++;
+  int ctx_idx;
   free_decode_context_fifo_ensure_init();
   if (array_size_t_length_get(free_context_fifo)) {
     ctx = (struct Decode_context*)array_size_t_pop(free_context_fifo);
+    ctx_idx = ctx->ctx_idx;
   } else {
     // alloc
     ctx = (struct Decode_context*)malloc(sizeof(struct Decode_context));
+    ctx_idx = free_context_counter++;
+    ctx->ctx_idx = ctx_idx;
     alloc_context_hash = hash_size_t_set(alloc_context_hash, ctx_idx, (size_t)ctx);
   }
+  
   // clear
   ctx->pFormatCtx = NULL;
   ctx->pCodecCtx  = NULL;
@@ -151,7 +154,6 @@ napi_value decode_ctx_free(napi_env env, napi_callback_info info) {
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   
-  alloc_context_hash = hash_size_t_set(alloc_context_hash, id, (size_t)NULL);
   free_context_fifo = array_size_t_push(free_context_fifo, (size_t)ctx);
   
   return ret_dummy;
@@ -162,11 +164,13 @@ napi_value decode_ctx_free(napi_env env, napi_callback_info info) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void frame_decode(struct Decode_context* ctx) {
-  while(av_read_frame(ctx->pFormatCtx, &ctx->packet) >= 0) {
+  // do not free this packet ever
+  AVPacket packet;
+  while(av_read_frame(ctx->pFormatCtx, &packet) >= 0) {
     // Is this a packet from the video stream?
-    if (ctx->packet.stream_index == ctx->videoStream) {
+    if (packet.stream_index == ctx->videoStream) {
       // Decode video frame
-      avcodec_decode_video2(ctx->pCodecCtx, ctx->pFrame, &ctx->frameFinished, &ctx->packet);
+      avcodec_decode_video2(ctx->pCodecCtx, ctx->pFrame, &ctx->frameFinished, &packet);
       if (ctx->frameFinished) {
         return;
       }
@@ -404,7 +408,8 @@ napi_value decode_finish(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
-  av_free_packet(&ctx->packet);
+  // NOTE we NOT free packet with av_free_packet
+  // av_free_packet(&ctx->packet);
   // Free the RGB image
   av_free(ctx->buffer);
   av_free(ctx->pFrameRGB);
@@ -418,6 +423,7 @@ napi_value decode_finish(napi_env env, napi_callback_info info) {
   // Close the video file
   avformat_close_input(&ctx->pFormatCtx);
   ctx->is_video_open = false;
+  
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   
   return ret_dummy;
@@ -466,7 +472,7 @@ napi_value decode_seek(napi_env env, napi_callback_info info) {
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_seek !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -547,7 +553,7 @@ napi_value decode_frame(napi_env env, napi_callback_info info) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // work
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_frame !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -638,7 +644,7 @@ napi_value decode_frame_next(napi_env env, napi_callback_info info) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // work
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_frame_next !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -732,7 +738,7 @@ napi_value decode_frame_copy(napi_env env, napi_callback_info info) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // work
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_frame_copy !ctx->is_video_open");
     return ret_dummy;
   }
   

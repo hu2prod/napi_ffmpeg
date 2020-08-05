@@ -62,7 +62,7 @@ u8 array8_pop(void* array_ptr) {
   size_t* size_t_view = (size_t*)array_ptr;
   size_t length = size_t_view[LENGTH_OFFSET];
   if (length == 0) return 0;
-  size_t_view[LENGTH_OFFSET]--;
+  length = --size_t_view[LENGTH_OFFSET];
   u8* u8_view = (u8*)array_ptr;
   return u8_view[length];
 }

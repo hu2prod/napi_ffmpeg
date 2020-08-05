@@ -61,7 +61,7 @@ size_t array_size_t_pop(void* array_ptr) {
   size_t* size_t_view = (size_t*)array_ptr;
   size_t length = size_t_view[LENGTH_OFFSET];
   if (length == 0) return 0;
-  size_t_view[LENGTH_OFFSET]--;
+  length = --size_t_view[LENGTH_OFFSET];
   return size_t_view[length];
 }
 
