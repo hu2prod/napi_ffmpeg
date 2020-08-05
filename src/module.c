@@ -70,7 +70,7 @@ struct Decode_context* decode_context_by_id(int id) {
 }
 
 // non thread-safe
-napi_value ffmpeg_decode_ctx_init(napi_env env, napi_callback_info info) {
+napi_value decode_ctx_init(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -116,7 +116,7 @@ napi_value ffmpeg_decode_ctx_init(napi_env env, napi_callback_info info) {
 }
 
 // non thread-safe
-napi_value ffmpeg_decode_ctx_free(napi_env env, napi_callback_info info) {
+napi_value decode_ctx_free(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -175,7 +175,7 @@ void frame_decode(struct Decode_context* ctx) {
   ctx->end_of_stream = true;
 }
 
-napi_value ffmpeg_decode_start(napi_env env, napi_callback_info info) {
+napi_value decode_start(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -366,7 +366,7 @@ napi_value ffmpeg_decode_start(napi_env env, napi_callback_info info) {
   return ret_arr;
 }
 
-napi_value ffmpeg_decode_finish(napi_env env, napi_callback_info info) {
+napi_value decode_finish(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value ret_dummy;
   status = napi_create_int32(env, 0, &ret_dummy);
@@ -401,7 +401,7 @@ napi_value ffmpeg_decode_finish(napi_env env, napi_callback_info info) {
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "ffmpeg_decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
   av_free_packet(&ctx->packet);
@@ -423,7 +423,7 @@ napi_value ffmpeg_decode_finish(napi_env env, napi_callback_info info) {
   return ret_dummy;
 }
 
-napi_value ffmpeg_decode_seek(napi_env env, napi_callback_info info) {
+napi_value decode_seek(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -466,7 +466,7 @@ napi_value ffmpeg_decode_seek(napi_env env, napi_callback_info info) {
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "ffmpeg_decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -497,7 +497,7 @@ napi_value ffmpeg_decode_seek(napi_env env, napi_callback_info info) {
 }
 
 // = next + copy
-napi_value ffmpeg_decode_frame(napi_env env, napi_callback_info info) {
+napi_value decode_frame(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -547,7 +547,7 @@ napi_value ffmpeg_decode_frame(napi_env env, napi_callback_info info) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // work
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "ffmpeg_decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -602,7 +602,7 @@ napi_value ffmpeg_decode_frame(napi_env env, napi_callback_info info) {
 }
 
 // separated API
-napi_value ffmpeg_decode_frame_next(napi_env env, napi_callback_info info) {
+napi_value decode_frame_next(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -638,7 +638,7 @@ napi_value ffmpeg_decode_frame_next(napi_env env, napi_callback_info info) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // work
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "ffmpeg_decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -681,7 +681,7 @@ napi_value ffmpeg_decode_frame_next(napi_env env, napi_callback_info info) {
   return ret_t;
 }
 
-napi_value ffmpeg_decode_frame_copy(napi_env env, napi_callback_info info) {
+napi_value decode_frame_copy(napi_env env, napi_callback_info info) {
   napi_status status;
   
   napi_value ret_dummy;
@@ -732,7 +732,7 @@ napi_value ffmpeg_decode_frame_copy(napi_env env, napi_callback_info info) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // work
   if (!ctx->is_video_open) {
-    napi_throw_error(env, NULL, "ffmpeg_decode_finish !ctx->is_video_open");
+    napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
   
@@ -786,82 +786,82 @@ napi_value Init(napi_env env, napi_value exports) {
   __alloc_init();
   av_register_all();
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_ctx_init, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_ctx_init, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_ctx_init", fn);
+  status = napi_set_named_property(env, exports, "decode_ctx_init", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_ctx_free, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_ctx_free, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_ctx_free", fn);
+  status = napi_set_named_property(env, exports, "decode_ctx_free", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_start, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_start, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_start", fn);
+  status = napi_set_named_property(env, exports, "decode_start", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_finish, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_finish, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_finish", fn);
+  status = napi_set_named_property(env, exports, "decode_finish", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_seek, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_seek, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_seek", fn);
+  status = napi_set_named_property(env, exports, "decode_seek", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_frame, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_frame, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_frame", fn);
+  status = napi_set_named_property(env, exports, "decode_frame", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_frame_next, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_frame_next, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_frame_next", fn);
+  status = napi_set_named_property(env, exports, "decode_frame_next", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  status = napi_create_function(env, NULL, 0, ffmpeg_decode_frame_copy, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, decode_frame_copy, NULL, &fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to wrap native function");
   }
   
-  status = napi_set_named_property(env, exports, "ffmpeg_decode_frame_copy", fn);
+  status = napi_set_named_property(env, exports, "decode_frame_copy", fn);
   if (status != napi_ok) {
     napi_throw_error(env, NULL, "Unable to populate exports");
   }
