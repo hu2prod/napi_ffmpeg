@@ -1,0 +1,23 @@
+{
+  "name": "napi_ffmpeg",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp configure build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hu2prod/napi_ffmpeg.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hu2prod/napi_ffmpeg/issues"
+  },
+  "homepage": "https://github.com/hu2prod/napi_ffmpeg#readme",
+  "dependencies": {
+    "node-gyp": "^7.0.0"
+  }
+}
