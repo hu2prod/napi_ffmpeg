@@ -1,11 +1,10 @@
-# napi_ffmpeg
-NOTE. Actually this is not ffmpeg, but libav which is almost equal ffmpeg \
+# napi_video
 NOTE encoding video is not implemented yet\
 decode video example
 
     // NOTE. all frames is in mcs (microseconds)
     
-    mod = require("napi_ffmpeg")
+    mod = require("napi_video")
     // different videos should decode with different contexts (if in parallel)
     var ctx = mod.ffmpeg_decode_ctx_init();
     
