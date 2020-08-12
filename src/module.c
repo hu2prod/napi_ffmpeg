@@ -31,6 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 struct Decode_context {
   i32             ctx_idx;
+  char*           file_path;
   AVFormatContext *pFormatCtx;
   int             videoStream;
   AVCodecContext  *pCodecCtx;
@@ -95,6 +96,7 @@ napi_value decode_ctx_init(napi_env env, napi_callback_info info) {
   }
   
   // clear
+  ctx->file_path  = NULL;
   ctx->pFormatCtx = NULL;
   ctx->pCodecCtx  = NULL;
   ctx->pCodec     = NULL;
@@ -164,7 +166,6 @@ napi_value decode_ctx_free(napi_env env, napi_callback_info info) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void frame_decode(struct Decode_context* ctx) {
-  // do not free this packet ever
   AVPacket packet;
   while(av_read_frame(ctx->pFormatCtx, &packet) >= 0) {
     // Is this a packet from the video stream?
@@ -172,10 +173,13 @@ void frame_decode(struct Decode_context* ctx) {
       // Decode video frame
       avcodec_decode_video2(ctx->pCodecCtx, ctx->pFrame, &ctx->frameFinished, &packet);
       if (ctx->frameFinished) {
+        av_free_packet(&packet);
         return;
       }
     }
+    av_free_packet(&packet);
   }
+  av_free_packet(&packet);
   ctx->end_of_stream = true;
 }
 
@@ -213,7 +217,6 @@ napi_value decode_start(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "Invalid id");
     return ret_dummy;
   }
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
   
   size_t file_path_len;
   status = napi_get_value_string_utf8(env, argv[1], NULL, 0, &file_path_len);
@@ -233,8 +236,17 @@ napi_value decode_start(napi_env env, napi_callback_info info) {
   }
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////
+  if (ctx->file_path)
+    free(ctx->file_path);
+  ctx->file_path = file_path;
   ctx->end_of_stream = false;
   ctx->frameFinished = false;
+  
+  if (ctx->pFormatCtx != NULL) {
+    napi_throw_error(env, NULL, "ctx->pFormatCtx != NULL; you probably forgot call decode_finish for this context");
+    return ret_dummy;
+  }
+  
   if (avformat_open_input(&ctx->pFormatCtx, file_path, NULL, NULL) != 0) {
     napi_throw_error(env, NULL, "avformat_open_input error");
     return ret_dummy;
@@ -280,6 +292,10 @@ napi_value decode_start(napi_env env, napi_callback_info info) {
   ctx->time_base = ctx->pFormatCtx->streams[ctx->videoStream]->time_base;
   
   ctx->pFrame = av_frame_alloc();
+  if (ctx->pFrame == NULL) {
+    napi_throw_error(env, NULL, "av_frame_alloc error");
+    return ret_dummy;
+  }
   ctx->pFrameRGB = av_frame_alloc();
   if (ctx->pFrameRGB == NULL) {
     napi_throw_error(env, NULL, "av_frame_alloc error");
@@ -304,6 +320,11 @@ napi_value decode_start(napi_env env, napi_callback_info info) {
         NULL
     );
   
+  if (!ctx->sws_ctx) {
+    napi_throw_error(env, NULL, "sws_getContext error");
+    return ret_dummy;
+  }
+  
   // Assign appropriate parts of buffer to image planes in pFrameRGB
   // Note that pFrameRGB is an AVFrame, but AVFrame is a superset
   // of AVPicture
@@ -317,7 +338,6 @@ napi_value decode_start(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "Unable to create return value");
     return ret_dummy;
   }
-  
   
   // width
   napi_value ret_width;
@@ -366,7 +386,6 @@ napi_value decode_start(napi_env env, napi_callback_info info) {
     return ret_dummy;
   }
   
-  
   return ret_arr;
 }
 
@@ -408,20 +427,36 @@ napi_value decode_finish(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "decode_finish !ctx->is_video_open");
     return ret_dummy;
   }
-  // NOTE we NOT free packet with av_free_packet
-  // av_free_packet(&ctx->packet);
-  // Free the RGB image
-  av_free(ctx->buffer);
-  av_free(ctx->pFrameRGB);
   
-  // Free the YUV frame
-  av_free(ctx->pFrame);
+  if (ctx->sws_ctx) {
+    sws_freeContext(ctx->sws_ctx);
+    ctx->sws_ctx = NULL;
+  }
   
-  // Close the codec
-  avcodec_close(ctx->pCodecCtx);
+  if (ctx->buffer) {
+    av_free(ctx->buffer);
+    ctx->buffer = NULL;
+  }
+  
+  if (ctx->pFrameRGB) {
+    av_free(ctx->pFrameRGB);
+    ctx->pFrameRGB = NULL;
+  }
+  if (ctx->pFrame) {
+    av_free(ctx->pFrame);
+    ctx->pFrame = NULL;
+  }
+  
+  if (ctx->pCodecCtx) {
+    avcodec_close(ctx->pCodecCtx);
+    ctx->pCodecCtx = NULL;
+  }
   
   // Close the video file
-  avformat_close_input(&ctx->pFormatCtx);
+  if (ctx->pFormatCtx) {
+    avformat_close_input(&ctx->pFormatCtx);
+    ctx->pFormatCtx = NULL;
+  }
   ctx->is_video_open = false;
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -462,7 +497,7 @@ napi_value decode_seek(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "Invalid id");
     return ret_dummy;
   }
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  
   i64 ff_dst;
   status = napi_get_value_int64(env, argv[1], &ff_dst);
   
@@ -536,7 +571,7 @@ napi_value decode_frame(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "Invalid id");
     return ret_dummy;
   }
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  
   u8* data_dst;
   size_t data_dst_len;
   status = napi_get_buffer_info(env, argv[1], (void**)&data_dst, &data_dst_len);
@@ -720,7 +755,6 @@ napi_value decode_frame_copy(napi_env env, napi_callback_info info) {
     napi_throw_error(env, NULL, "Invalid id");
     return ret_dummy;
   }
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
   
   u8* data_dst;
   size_t data_dst_len;
